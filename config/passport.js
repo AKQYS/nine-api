@@ -1,14 +1,16 @@
 // config/passport.js
 
-// load all the things we need
+// load all the things weneed
+var bcrypt = require('bcrypt');
+var bluebird = require('bluebird');
 var LocalStrategy   = require('passport-local').Strategy;
+var utils = require('../utils');
 
 // load up the user model
 var User = require('../app/models/user');
 var user = new User();
 
-
-console.log("user", user);
+var bcryptHash = bluebird.promisify(bcrypt.hash);
 
 // expose this function to our app using module.exports
 module.exports = function(passport) {
@@ -20,17 +22,16 @@ module.exports = function(passport) {
     // passport needs ability to serialize and unserialize users out of session
 
     // used to serialize the user for the session
-    passport.serializeUser(function(user, done) {
-        done(null, user.id);
+    passport.serializeUser(function(item, done) {
+        done(null, item.email);
     });
 
     // used to deserialize the user
-    passport.deserializeUser(function(username, done) {
-        user.get(id, function(err, user) {
-            console.log("passport user lookup");
-            console.log("err", err);
-            console.log("user", user);
-            done(err, user);
+    passport.deserializeUser(function(email, done) {
+        user.lookup(email).then(function(res) {
+            done(null, res[0]);
+        }).catch(function(err) {
+            done(err, false);
         });
     });
 
@@ -47,46 +48,29 @@ module.exports = function(passport) {
             passReqToCallback : true // allows us to pass back the entire request to the callback
         },
         function(req, email, password, done) {
-
-            console.log('i am here', req);
-
-            // asynchronous
-            // User.findOne wont fire unless data is sent back
-            process.nextTick(function() {
-
-                // find a user whose email is the same as the forms email
-                // we are checking to see if the user trying to login already exists
-                user.lookup({ 'username' :  req.body.username }, function(err, user) {
-                    // if there are any errors, return the error
-                    if (err)
-                        return done(err);
-
-                    // check to see if theres already a user with that email
-                    if (user) {
-                        return done(null, false, req.flash('signupMessage', 'That email is already taken.'));
-                    } else {
-
-                        // if there is no user with that email
-                        // create the user
-                        // User.create()
-                        // var newUser            = new User();
-
-                        // set the user's local credentials
-                        // newUser.local.email    = email;
-                        // newUser.local.password = newUser.generateHash(password);
-
-                        // save the user
-                        // newUser.save(function(err) {
-                        //     if (err)
-                        //         throw err;
-                            return done(null, 'newUser');
-                        // });
-                    }
-
+            return user.lookup(email).then(function(res) {
+                if (res.length) {
+                    throw new utils.HttpError(409, 'That email address is already in use')
+                }
+            }).then(function () {
+                return bcryptHash(password, 10);
+            }).then(function (hash) {
+                this.hash = hash;
+                return user.create({
+                    email: email,
+                    first_name: req.body.first_name,
+                    last_name: req.body.last_name,
+                    hash: hash
                 });
-
+            }).then(function() {
+                return user.lookup(email);
+            }).then(function (res) {
+                if (!res) {
+                    throw new utils.HttpError(409, 'User was not created. Please try again.');
+                }
+                done(null, res[0]);
+            }).catch(function(err) {
+                done(err);
             });
-
         }));
-
 };

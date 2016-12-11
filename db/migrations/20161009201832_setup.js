@@ -1,13 +1,11 @@
-
 exports.up = function(knex, Promise) {
     return Promise.all([
         knex.schema.createTableIfNotExists('users', function(table) {
-            table.increments();
-            table.uuid('uuid').notNullable();
-            table.string('username', 45).notNullable();
-            table.string('name').notNullable();
+            table.uuid('id').primary().defaultTo(knex.raw('uuid_generate_v4()'));
+            table.string('first_name').notNullable();
+            table.string('last_name').notNullable();
             table.string('email').unique().notNullable();
-            table.binary('password').notNullable();
+            table.binary('hash').notNullable();
             table.timestamps(true, true);   // Not nullable, and default to the current timestamps
         }),
         knex.schema.createTableIfNotExists('tags', function(table) {
