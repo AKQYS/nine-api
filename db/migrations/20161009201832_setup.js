@@ -5,7 +5,7 @@ exports.up = function(knex, Promise) {
             table.string('first_name').notNullable();
             table.string('last_name').notNullable();
             table.string('email').unique().notNullable();
-            table.binary('hash').notNullable();
+            table.string('hash').notNullable();
             table.timestamps(true, true);   // Not nullable, and default to the current timestamps
         }),
         knex.schema.createTableIfNotExists('tags', function(table) {

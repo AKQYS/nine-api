@@ -11,7 +11,29 @@ module.exports = function(app, passport) {
     });
 
     // process the login form
-    // app.post('/login', do all our passport stuff here);
+    app.post('/login',
+        function(req, res, next) {
+            passport.authenticate('local-login', function(err, user, info) {
+                if (err) {
+                    return res.status(err.code).send(err.message);
+                }
+
+                if (user) {
+                    req.logIn(user, function (err) {
+                        if (err) {
+                            return res.send({
+                                'status': 'err', 'message': err.message
+                            });
+                        }
+                        return res.send({
+                            'status': 'ok'
+                        });
+                    });
+                }
+            })(req, res, next);
+        }, function(err) {
+            console.log(err);
+        });
 
     app.post('/signup',
         function(req, res, next) {
