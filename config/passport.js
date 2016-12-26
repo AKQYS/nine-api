@@ -61,15 +61,7 @@ module.exports = function(passport) {
                 }
 
                 this.user = res[0];
-
-
-                return bcryptHash(password, 10);
-            }).then(function(passwordHash) {
-
-                console.log('passwordHash', passwordHash);
-                console.log('passwordHash', this.user.hash);
-
-                return bcryptCompare(passwordHash, this.user.hash);
+                return bcryptCompare(password, this.user.hash);
             }).then(function(match) {
                 if (match) {
                     done(null, this.user);
